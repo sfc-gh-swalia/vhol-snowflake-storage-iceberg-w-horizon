@@ -1,0 +1,8 @@
+{
+  "user": "<YOUR_SNOWFLAKE_USER>",
+  "account": "<YOUR_ACCOUNT_IDENTIFIER>",
+  "url": "https://<YOUR_ACCOUNT_IDENTIFIER>.snowflakecomputing.com:443",
+  "private_key": "<PASTE_YOUR_RSA_PRIVATE_KEY_BASE64_HERE>",
+  "ENABLE_ICEBERG_STREAMING": "true",
+  "role": "DEMO_ADMIN"
+}

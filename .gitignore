@@ -1,0 +1,22 @@
+# Secrets — never commit credentials
+profile.json
+rsa_key.p8
+rsa_key.pub
+*.p8
+*.pem
+
+# Maven build artifacts
+target/
+*.class
+*.jar
+
+# IDE
+.idea/
+*.iml
+.vscode/
+.DS_Store
+
+# Python
+__pycache__/
+*.pyc
+.ipynb_checkpoints/
