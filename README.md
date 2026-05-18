@@ -143,6 +143,7 @@ Run the modules in order. Each script includes inline comments explaining what e
 | 3 | [scripts/03_horizon_governance.sql](scripts/03_horizon_governance.sql) | Apply masking + RLS policies (Path B), generate a PAT for Databricks, verify Path A/B setup |
 | 4 | [scripts/04_databricks_read.ipynb](scripts/04_databricks_read.ipynb) | Read all tables from Databricks via Horizon IRC — observe Path A (direct) vs Path B (governed) |
 | 5 | [scripts/05_semantic_view.sql](scripts/05_semantic_view.sql) | Create a semantic view over Iceberg tables, build a Cortex Agent, test with Snowflake Intelligence |
+| 6 (Optional) | [scripts/06_cortex_code_prompts.sql](scripts/06_cortex_code_prompts.sql) | Curated Cortex Code prompts — explore the entire quickstart with AI assistance |
 
 ### Running the Java SSV2 Ingest (Module 2)
 
@@ -190,6 +191,7 @@ sfguide-snowflake-iceberg-interoperability/
 │   ├── 03_horizon_governance.sql   ← Module 3: governance (Path A / Path B)
 │   ├── 04_databricks_read.ipynb    ← Module 4: Databricks multi-engine read
 │   ├── 05_semantic_view.sql        ← Module 5: Semantic View + Cortex Agent + RBAC demo
+│   ├── 06_cortex_code_prompts.sql  ← Module 6 (Optional): CoCo prompts for all modules
 │   ├── teardown_governance.sql     ← Teardown: governance objects only
 │   └── teardown_full.sql           ← Teardown: full reset
 └── ssv2-streaming/
