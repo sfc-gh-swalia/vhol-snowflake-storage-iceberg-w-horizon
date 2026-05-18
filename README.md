@@ -55,7 +55,7 @@ flowchart LR
     S3 --> CTAS --> YT & GT & ZL
 
     YT --> IRC --> DBX_A
-    GT --> GOV --> IRC --> DBX_B
+    GT --> IRC --> GOV --> DBX_B
 
     YT & ZL --> SV --> AGENT --> SI
 ```
