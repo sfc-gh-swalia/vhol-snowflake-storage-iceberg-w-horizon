@@ -231,7 +231,7 @@ This quickstart demonstrates how Snowflake eliminates three taxes that tradition
 | **Interoperability Tax** | Custom ETL to expose data to Spark; governance bypassed outside Snowflake | Horizon IRC + Open APIs serve Iceberg metadata; FGAC enforced server-side even on Spark |
 | **AI Access Tax** | Data engineers write bespoke APIs/views for every BI/AI consumer | Semantic view defines meaning once; Cortex Agent + Intelligence serve any business user |
 
-![Eliminate the Storage and Interoperability Tax](EliminateStorageAndInteropTax.pdf.png)
+![Eliminate the Storage and Interoperability Tax](EliminateStorageAndInteropTax.png)
 
 ## License
 
