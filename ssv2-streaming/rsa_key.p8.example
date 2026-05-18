@@ -1,5 +1,0 @@
------BEGIN PRIVATE KEY-----
-<PASTE YOUR RSA PRIVATE KEY HERE>
-Rename this file to rsa_key.p8 after filling in your key.
-See: https://docs.snowflake.com/en/user-guide/key-pair-auth
------END PRIVATE KEY-----

@@ -4,7 +4,7 @@ Build Snowflake-managed Iceberg tables, stream live data via Snowpipe Streaming 
 
 ## What You Will Build
 
-- **Snowflake-managed Iceberg tables** — 40M+ NYC taxi trips and weather data stored as open Apache Iceberg (Parquet + metadata), managed entirely by Snowflake with zero bucket configuration
+- **Snowflake-managed Iceberg tables** — NYC taxi trips and weather data stored as open Apache Iceberg (Parquet + metadata), managed entirely by Snowflake with zero bucket configuration
 - **Real-time streaming ingest** — A Java application that calls the Open-Meteo weather API and streams rows into an Iceberg V3 VARIANT table via Snowpipe Streaming V2 (SSV2)
 - **Multi-engine reads from Databricks** — Databricks reads the same Iceberg tables through Snowflake's Horizon Iceberg REST Catalog (IRC) endpoint
 - **Governance across engine boundaries** — Column masking and row-level security (RLS) policies applied in Snowflake are enforced when Databricks reads via Horizon
@@ -12,7 +12,53 @@ Build Snowflake-managed Iceberg tables, stream live data via Snowpipe Streaming 
 
 ### Architecture
 
-![High Level Data Flow](image.png)
+![End-to-End Data Flow](arch.png)
+
+### Consumer Layer — External + Internal AI
+
+```mermaid
+flowchart LR
+    subgraph SOURCES["Data Sources"]
+        API[Open-Meteo API]
+        S3[External Stage<br/>s3://sfquickstarts]
+    end
+
+    subgraph INGEST["Ingestion"]
+        SSV2[Snowpipe Streaming V2]
+        CTAS[SSI CTAS<br/>CATALOG = SNOWFLAKE]
+    end
+
+    subgraph ICEBERG["Iceberg Tables"]
+        WT[nyc_weather_ssv2<br/>V3 VARIANT]
+        YT[yellow_trips<br/>Path A — no policy]
+        GT[green_trips<br/>Path B — masking + RLS]
+        ZL[zone_lookup]
+    end
+
+    subgraph CATALOG["Horizon Catalog"]
+        IRC[Iceberg REST Catalog]
+        GOV[Governance Policies<br/>masking • RLS]
+    end
+
+    subgraph EXTERNAL["External Consumers"]
+        DBX_A[Databricks Path A<br/>Direct Parquet • 0 SF credits]
+        DBX_B[Databricks Path B<br/>Governed • SF compute]
+    end
+
+    subgraph INTERNAL["Internal AI Consumers"]
+        SV[Semantic View<br/>nyc_taxi_analytics]
+        AGENT[Cortex Agent<br/>nyc_taxi_agent]
+        SI[Snowflake Intelligence<br/>Natural Language → SQL]
+    end
+
+    API --> SSV2 --> WT
+    S3 --> CTAS --> YT & GT & ZL
+
+    YT --> IRC --> DBX_A
+    GT --> GOV --> IRC --> DBX_B
+
+    YT & ZL --> SV --> AGENT --> SI
+```
 
 ## Prerequisites
 
@@ -92,10 +138,11 @@ Run the modules in order. Each script includes inline comments explaining what e
 | Module | Script | What You Will Do |
 |---|---|---|
 | 0 | [scripts/00_setup.sql](scripts/00_setup.sql) | Create roles, warehouses, database, external stage, network rules, and Iceberg V3 defaults |
-| 1 | [scripts/01_create_tables.sql](scripts/01_create_tables.sql) | Create Iceberg tables from 40M+ NYC taxi trip Parquet files (yellow + green) and a zone lookup |
+| 1 | [scripts/01_create_tables.sql](scripts/01_create_tables.sql) | Create Iceberg tables from NYC taxi trip Parquet files (yellow + green) and a zone lookup |
 | 2 | [scripts/02_ssv2_streaming_setup.sql](scripts/02_ssv2_streaming_setup.sql) | Create the SSV2 weather table + pipe, run the Java ingest app, explore VARIANT queries |
 | 3 | [scripts/03_horizon_governance.sql](scripts/03_horizon_governance.sql) | Apply masking + RLS policies (Path B), generate a PAT for Databricks, verify Path A/B setup |
 | 4 | [scripts/04_databricks_read.ipynb](scripts/04_databricks_read.ipynb) | Read all tables from Databricks via Horizon IRC — observe Path A (direct) vs Path B (governed) |
+| 5 | [scripts/05_semantic_view.sql](scripts/05_semantic_view.sql) | Create a semantic view over Iceberg tables, build a Cortex Agent, test with Snowflake Intelligence |
 
 ### Running the Java SSV2 Ingest (Module 2)
 
@@ -133,6 +180,7 @@ Two teardown scripts are provided:
 sfguide-snowflake-iceberg-interoperability/
 ├── README.md                       ← You are here
 ├── DATABRICKS_SETUP.md             ← Databricks cluster configuration guide
+├── EliminateStorageAndInteropTax.pdf ← Strategic narrative — what taxes are eliminated
 ├── LICENSE                         ← Apache 2.0
 ├── .gitignore                      ← Ignores secrets and build artifacts
 ├── scripts/
@@ -141,6 +189,7 @@ sfguide-snowflake-iceberg-interoperability/
 │   ├── 02_ssv2_streaming_setup.sql ← Module 2: SSV2 streaming + VARIANT
 │   ├── 03_horizon_governance.sql   ← Module 3: governance (Path A / Path B)
 │   ├── 04_databricks_read.ipynb    ← Module 4: Databricks multi-engine read
+│   ├── 05_semantic_view.sql        ← Module 5: Semantic View + Cortex Agent + RBAC demo
 │   ├── teardown_governance.sql     ← Teardown: governance objects only
 │   └── teardown_full.sql           ← Teardown: full reset
 └── ssv2-streaming/
@@ -165,6 +214,24 @@ Snowflake's built-in catalog endpoint that implements the open-source Apache Ice
 
 ### Iceberg V3 VARIANT
 Iceberg format version 3 adds native support for complex/semi-structured types. The `nyc_weather_ssv2` table stores full JSON API responses as VARIANT, queryable from both Snowflake (dot notation) and Spark 4.0 (`variant_get`).
+
+### Semantic View (nyc_taxi_analytics)
+A schema-level object that defines business dimensions, metrics, synonyms, and verified queries over the physical Iceberg tables. It is the "contract" between raw data and AI consumers — Cortex Analyst reads the semantic view to translate natural language into SQL. The SQL DDL and equivalent YAML representation are both shown in Module 5.
+
+### Cortex Agent (nyc_taxi_agent)
+Wraps the semantic view and exposes it via Snowflake Intelligence. Users ask questions in plain English; the agent routes to Cortex Analyst, which generates SQL grounded by the semantic view's definitions and VQRs (Verified Query Representations).
+
+## What This Architecture Eliminates
+
+This quickstart demonstrates how Snowflake eliminates three taxes that traditionally plague multi-engine architectures:
+
+| Tax | Traditional Pain | What Snowflake Eliminates |
+|---|---|---|
+| **Storage Tax** | Separate copies for each engine (Snowflake tables + S3 Parquet for Spark) | Single Iceberg copy, Snowflake-managed, readable by any engine |
+| **Interoperability Tax** | Custom ETL to expose data to Spark; governance bypassed outside Snowflake | Horizon IRC + Open APIs serve Iceberg metadata; FGAC enforced server-side even on Spark |
+| **AI Access Tax** | Data engineers write bespoke APIs/views for every BI/AI consumer | Semantic view defines meaning once; Cortex Agent + Intelligence serve any business user |
+
+![Eliminate the Storage and Interoperability Tax](EliminateStorageAndInteropTax.pdf.png)
 
 ## License
 
